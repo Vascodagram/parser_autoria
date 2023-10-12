@@ -1,0 +1,62 @@
+version: '3.3'
+
+
+services:
+
+  redis:
+    image: "redis/redis-stack:latest"
+    restart: "always"
+    ports:
+      - "127.0.0.1:6378:6379"
+#      - "127.0.0.1:8001:8001"
+    environment:
+      - REDIS_DNS=redis://redis:6378/0
+    volumes:
+      - "./volumes/redis:/data"
+    networks:
+      - net
+
+  db:
+    image: "postgres:latest"
+    restart: "always"
+    volumes:
+      - "./volumes/psql:/var/lib/postgresql/data"
+    environment:
+      - POSTGRES_USER=AutoRia
+      - POSTGRES_PASSWORD=AutoRia
+      - POSTGRES_DB=autoria
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+    ports:
+      - "5431:5432"
+    networks:
+      - net
+
+#  celery:
+#    image: backend
+#    command: celery -A producer_consumer worker -l info
+#    env_file:
+#      - .env
+#    volumes:
+#      - ./:/app
+#    depends_on:
+#      - db
+#      - redis
+#    networks:
+#      - net
+#
+#  celery-beat:
+#    image: backend
+#    command: celery -A producer_consumer beat
+#    env_file:
+#      - .env
+#    volumes:
+#      - ./:/app
+#    depends_on:
+#      - db
+#      - redis
+#    networks:
+#      - net
+
+networks:
+  net:
