@@ -1,27 +1,22 @@
 import json
-import os
 
+import brotli
 import aiohttp
-import aiopg
 
 from dataclasses import dataclass
 
-dsn = 'dbname={dbname} user={user} password={password} host={host}'
 
+aiohttp.ClientResponse._decode_compression = brotli.decompress
 
-async def go():
-    return await aiopg.connect(
-        database=os.getenv('POSTGRES_DB', 'autoria'),
-        user=os.getenv('POSTGRES_USER', 'AutoRia'),
-        password=os.getenv('POSTGRES_PASSWORD', 'AutoRia'),
-        host=os.getenv('POSTGRES_HOST', 'localhost'),
-        port=os.getenv('POSTGRES_PORT', 5431)
-    )
-
-
-def iter_chunks(data, size=1000):
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
+HEADERS = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,'
+              'image/avif,image/webp,image/apng,*/*;q=0.8,'
+              'application/signed-exchange;v=b3;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Language': 'en-US,en;q=0.9,uk;q=0.8,ru;q=0.7',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ('
+                  'KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+}
 
 
 @dataclass
@@ -40,14 +35,14 @@ async def async_request(
         request_timeout=None,
         verify_ssl=True
 ):
-    result = None
+
     async with aiohttp.ClientSession() as session:
         async with session.request(
                 method=method,
                 url=url,
                 data=json.dumps(data) if data else None,
                 params=params,
-                headers=headers,
+                headers=HEADERS if not headers else headers,
                 timeout=request_timeout,
                 ssl=verify_ssl
         ) as response:

@@ -1,29 +1,65 @@
 import asyncio
 import json
 import logging
-import os
+
+from utils.db import async_db_session, table_exists, create_car_table
+from utils.other import iter_chunks, fetch_soup
+from utils.http_cli import async_request
+from parser import format, parsers
 
 from collections import defaultdict
 
-from utils import async_request, iter_chunks, go
-
 logging.basicConfig(level=logging.INFO)
-
 counter = defaultdict(list)
 
 
-async def await_db_session(url='http://db:5432/'):
-    user = os.getenv('POSTGRES_USER')
-    password = os.getenv('POSTGRES_PASSWORD')
-    db = os.getenv('POSTGRES_DB')
+async def main():
+    url = 'https://auto.ria.com/uk/search/'
+    params = {
+        'indexName': 'auto,order_auto',
+        'categories.main.id': 1,
+        'country.import.usa.not': -1,
+        'price.currency': 1,
+        'page': 0,
+        'size': 100
+    }
+    session = await async_db_session()
 
-    session = None  # SQLAlchemy session
+    create = table_exists(session)
 
-    return session
+    if not create:
+        await create_car_table(session)
+        logging.info(' Table Car created')
+
+    else:
+        logging.info('The Car table has already been created')
+
+    resp = await async_request(url=url, params=params)
+
+    if resp.status != 200:
+        logging.warning(f'Page count parser, status code: {resp.status}')
+        return
+
+    cnt_page = parsers.get_cnt_pages(fetch_soup(resp.content))
+
+    for page in range(0, cnt_page):
+        params['page'] = page
+
+        resp = await async_request(
+            url=url,
+            params=params
+        )
+
+        links = parsers.get_links(fetch_soup(resp.content))
+
+        await async_parsing_urls(links)
+
+        logging.info(f'Page {page} of {cnt_page}')
+
+    session.close()
 
 
-async def afetch_urls(urls):
-    session = await await_db_session()
+async def async_parsing_urls(session, urls):
     tasks = []
 
     for url in urls:
@@ -47,7 +83,7 @@ async def afetch_urls(urls):
 
 
 async def fetch_url(url):
-    url_phones = 'https://auto.ria.com/users/phones/'
+    # url_phones = 'https://auto.ria.com/users/phones/'
 
     resp = await async_request(url)
 
@@ -55,21 +91,19 @@ async def fetch_url(url):
         logging.warning(f'Bad request, status code: {resp.status}')
         return
 
-    content = resp.content
-
-    valid_data = data_validation(content)
-
-    id_users, hash, expires = [
-        valid_data[v] for v in ['id_users', 'hash', 'expires']
-    ]
+    raw_data = parsers.get_data(fetch_soup(resp.content))
 
     resp_phones = await async_request(
-        url=f'https://auto.ria.com/users/phones/{id_users}',
+        url=f'https://auto.ria.com/users/phones/{raw_data["id_user"]}',
         params={
-            'hash': hash,
-            'expires': expires
+            'hash': raw_data['hash'],
+            'expires': raw_data['expires']
         }
     )
+
+    raw_data['phones'] = resp_phones
+
+    data = parsers.format_data(raw_data)
 
     if resp_phones.status != 200:
         logging.warning(
@@ -79,10 +113,10 @@ async def fetch_url(url):
     raw_phones = json.dumps(resp_phones.content)
 
     return {
-        'url': valid_data.get('url', ''),
-        'title': valid_data.get('title', ''),
-        'price_usd': valid_data.get('price_usd', ''),
-        'odometer': format_odometer(valid_data.get('odometer')),
+        'url': data.get('url', ''),
+        'title': data.get('title', ''),
+        'price_usd': data.get('price_usd', ''),
+        'odometer': format_odometer(data.get('odometer')),
         'phone': format_phones(raw_phones)
         # ...
     }
@@ -120,4 +154,4 @@ def data_validation(content, table='car'):
 
 
 if __name__ == '__main__':
-    conn = asyncio.run(go())
+    conn = asyncio.run(async_db_session())
