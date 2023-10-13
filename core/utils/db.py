@@ -1,6 +1,28 @@
+import logging
 import os
 
 import aiopg
+
+
+async def insert_car_data(session, data):
+    try:
+        async with session.cursor() as cur:
+            for item in data:
+                await cur.execute("""
+                    INSERT INTO car (url, title, price_usd, odometer, username, 
+                    phone_number, image_url, images_count, car_number, car_vin)
+                    VALUES (%(url)s, %(title)s, %(price_usd)s, %(odometer)s, 
+                    %(username)s, %(phone_number)s, %(image_url)s, 
+                    %(images_count)s, %(car_number)s, %(car_vin)s)
+                    """, item)
+
+    except aiopg.exceptions.IntegrityError as e:
+        logging.warning(
+            f'Uniqueness validation error or other basic errors: {e}'
+        )
+
+    except aiopg.exceptions.DataError as e:
+        logging.warning(f'Data error {e}')
 
 
 async def async_db_session():

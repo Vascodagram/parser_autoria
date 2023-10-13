@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class CarData:
     id: str
@@ -21,3 +22,10 @@ class CarData:
 
 def format_data(raw_data):
     return
+
+
+def format_odometer(value):
+    if 'тис' in value or 'тыс':
+        value = int(value) * 1000
+
+    return value
