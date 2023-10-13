@@ -66,5 +66,7 @@ target/
 *.bak
 .DS_Store
 
+Pipfile.lock
+
 volumes/redis/
 volumes/psql/

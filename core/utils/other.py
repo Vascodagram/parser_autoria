@@ -2,7 +2,7 @@ import bs4
 
 
 def fetch_soup(content, *args, **kwargs):
-    return bs4.BeautifulSoup(content, 'html.parser', *args, **kwargs)
+    return bs4.BeautifulSoup(content, 'lxml', *args, **kwargs)
 
 
 def iter_chunks(data, size=1000):

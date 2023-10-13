@@ -1,6 +1,6 @@
 import asyncio
-import json
 import logging
+import math
 
 from utils.db import (async_db_session, table_exists, create_car_table,
                       insert_car_data)
@@ -19,6 +19,7 @@ PARAMS = {
     'indexName': 'auto,order_auto',
     'categories.main.id': 1,
     'country.import.usa.not': -1,
+    'abroad.not': 0,
     'price.currency': 1,
     'page': 0,
     'size': 100
@@ -38,6 +39,7 @@ async def fetch_pages(chunk_size):
         return
 
     cnt_pages = parsers.get_cnt_pages(fetch_soup(resp.content))
+    cnt_pages = math.ceil(cnt_pages / PARAMS['size'])
 
     tasks = []
     for page in range(0, cnt_pages):
@@ -54,18 +56,19 @@ async def fetch_pages(chunk_size):
         res = await asyncio.gather(*chunk)
 
         for response in res:
-            counter["cnt_pages"].extend(response.status)
+            counter["cnt_pages"].append(response.status)
 
             result.extend(
                 parsers.get_links_of_page(fetch_soup(response.content))
             )
+        break
 
         logging.info(f'Collected {len((counter["cnt_pages"]))} pages')
 
     return result
 
 
-async def main(links, chunk_size):
+async def main(value, chunk_size):
     session = await async_db_session()
 
     create = table_exists(session)
@@ -78,43 +81,16 @@ async def main(links, chunk_size):
         logging.info('The Car table has already been created!!!')
 
     tasks = []
-    for link in links:
+    for link in value:
         tasks.append(asyncio.create_task(fetch_url(link)))
 
     for chunk in iter_chunks(tasks, size=chunk_size):
-        result = []
-
         res = await asyncio.gather(*chunk)
 
-        for response in res:
-            result.append(parsers.get_data(response.content))
-
-        await insert_car_data(session, result)
+        break
+        await insert_car_data(session, res)
 
     await session.close()
-
-
-# async def async_parsing_urls(session, urls):
-#     tasks = []
-#
-#     for url in urls:
-#         tasks.append(asyncio.create_task(fetch_url(url)))
-#
-#     for chunk in iter_chunks(tasks, 20):
-#         result = await asyncio.gather(*chunk)
-#
-#         for data in result:
-#
-#             if not data:
-#                 continue
-#
-#             await insert_db(session, data)
-#
-#         counter['parse_urls'].extend(chunk)
-#
-#         logging.info(
-#             f' Data inserted into the database {len(counter["parse_urls"])}'
-#         )
 
 
 async def fetch_url(url):
@@ -139,8 +115,12 @@ async def fetch_url(url):
             f'Bad request for phones link, status code: {resp.status}')
         return
 
-    raw_data['phones'] = parsers.get_phones(resp_phones)
+    raw_data['phone_number'] = parsers.get_phones(resp_phones)
 
     data = format.format_data(raw_data)
 
     return data
+
+if __name__ == '__main__':
+    links = asyncio.run(fetch_pages(1))
+    asyncio.run(main(links, chunk_size=1))
