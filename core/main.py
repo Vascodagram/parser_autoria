@@ -45,14 +45,15 @@ async def fetch_pages(chunk_size):
     for page in range(0, cnt_pages):
         PARAMS['page'] = page
 
-        tasks.append(asyncio.create_task(
+        tasks.append(
             async_request(
                 url=URL,
                 params=PARAMS
             )
-        ))
+        )
 
     for chunk in iter_chunks(tasks, size=chunk_size):
+
         res = await asyncio.gather(*chunk)
 
         for response in res:
@@ -62,7 +63,6 @@ async def fetch_pages(chunk_size):
                 parsers.get_links_of_page(fetch_soup(response.content))
             )
         break
-
         logging.info(f'Collected {len((counter["cnt_pages"]))} pages')
 
     return result
@@ -82,7 +82,7 @@ async def main(value, chunk_size):
 
     tasks = []
     for link in value:
-        tasks.append(asyncio.create_task(fetch_url(link)))
+        tasks.append(fetch_url(link))
 
     for chunk in iter_chunks(tasks, size=chunk_size):
         res = await asyncio.gather(*chunk)
@@ -94,14 +94,15 @@ async def main(value, chunk_size):
 
 
 async def fetch_url(url):
+    print(url)
     resp = await async_request(url)
 
     if resp.status != 200:
         logging.warning(f'Bad request, status code: {resp.status}')
         return
 
-    raw_data = parsers.get_data(fetch_soup(resp.content))
-
+    raw_data = parsers.get_data(url, fetch_soup(resp.content))
+    print(raw_data)
     resp_phones = await async_request(
         url=f'https://auto.ria.com/users/phones/{raw_data["id_user"]}',
         params={

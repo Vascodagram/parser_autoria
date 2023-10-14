@@ -25,7 +25,7 @@ def format_data(raw_data):
 
 
 def format_odometer(value):
-    if 'тис.км' in value or 'тыс.км':
-        value = int(value) * 1000
+    if 'тис. км пробіг' in value:
+        value = int(value.replace('тис. км пробіг', '').replace(' ', '')) * 1000
 
     return value

@@ -33,7 +33,7 @@ async def async_request(
         headers=None,
         data=None,
         request_timeout=None,
-        verify_ssl=True
+        verify_ssl=False
 ):
 
     async with aiohttp.ClientSession() as session:
