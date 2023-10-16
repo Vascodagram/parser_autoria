@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 
@@ -29,3 +30,10 @@ def format_odometer(value):
         value = int(value.replace('тис. км пробіг', '').replace(' ', '')) * 1000
 
     return value
+
+
+def format_phones(value):
+    raw_phone = value['formattedPhoneNumber']
+    phone = re.sub(r'[() ]', '', raw_phone)
+
+    return '+38' + phone

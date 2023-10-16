@@ -10,7 +10,7 @@ services:
       - "127.0.0.1:6378:6379"
 #      - "127.0.0.1:8001:8001"
     environment:
-      - REDIS_DNS=redis://redis:6378/0
+      - REDIS_DNS=redis://redis:6379/0
     volumes:
       - "./volumes/redis:/data"
     networks:
@@ -32,18 +32,16 @@ services:
     networks:
       - net
 
-#  celery:
-#    image: backend
-#    command: celery -A producer_consumer worker -l info
-#    env_file:
-#      - .env
-#    volumes:
-#      - ./:/app
-#    depends_on:
-#      - db
-#      - redis
-#    networks:
-#      - net
+  celery:
+    image: parser
+    command: celery -A tasks.config_celery worker -l info
+    volumes:
+      - ./:/app
+    depends_on:
+      - db
+      - redis
+    networks:
+      - net
 #
 #  celery-beat:
 #    image: backend

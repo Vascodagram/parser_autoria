@@ -46,6 +46,7 @@ async def async_request(
                 timeout=request_timeout,
                 ssl=verify_ssl
         ) as response:
+
             status = response.status
             content = await response.read()
 

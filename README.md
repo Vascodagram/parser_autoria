@@ -1,0 +1,1 @@
+## START    sudo rm -rf ./volumes/psql    sudo rm -rf ./volumes/redis    docker build -t parser ./core    docker compose up -d## CHECK DB    docker exec -it parser_autoria-db-1 psql -U AutoRia -d autoria    SELECT car_number, images_count, odometer, username, url FROM car ORDER BY datetime_found DESC;

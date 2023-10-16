@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import math
 
@@ -15,15 +16,32 @@ logging.basicConfig(level=logging.INFO)
 counter = defaultdict(list)
 
 URL = 'https://auto.ria.com/uk/search/'
+
 PARAMS = {
     'indexName': 'auto,order_auto',
     'categories.main.id': 1,
+    'price.USD.lte': 1000,
     'country.import.usa.not': -1,
     'abroad.not': 0,
     'price.currency': 1,
     'page': 0,
     'size': 100
 }
+
+
+async def init_db():
+    session = await async_db_session()
+
+    create = await table_exists(session)
+
+    if not create:
+        await create_car_table(session)
+        logging.info(' Table Car created!!!')
+
+    else:
+        logging.info('The Car table has already been created!!!')
+
+    await session.close()
 
 
 async def fetch_pages(chunk_size):
@@ -39,21 +57,24 @@ async def fetch_pages(chunk_size):
         return
 
     cnt_pages = parsers.get_cnt_pages(fetch_soup(resp.content))
+
+    logging.info(f'Car count {cnt_pages}')
+
     cnt_pages = math.ceil(cnt_pages / PARAMS['size'])
 
+    logging.info(f'Pages count {cnt_pages}')
+
     tasks = []
+
     for page in range(0, cnt_pages):
-        PARAMS['page'] = page
+        params = PARAMS.copy()
+        params['page'] = page
 
         tasks.append(
-            async_request(
-                url=URL,
-                params=PARAMS
-            )
+            async_request(url=URL, params=params)
         )
 
     for chunk in iter_chunks(tasks, size=chunk_size):
-
         res = await asyncio.gather(*chunk)
 
         for response in res:
@@ -62,7 +83,7 @@ async def fetch_pages(chunk_size):
             result.extend(
                 parsers.get_links_of_page(fetch_soup(response.content))
             )
-        break
+
         logging.info(f'Collected {len((counter["cnt_pages"]))} pages')
 
     return result
@@ -71,43 +92,38 @@ async def fetch_pages(chunk_size):
 async def main(value, chunk_size):
     session = await async_db_session()
 
-    create = table_exists(session)
-
-    if not create:
-        await create_car_table(session)
-        logging.info(' Table Car created!!!')
-
-    else:
-        logging.info('The Car table has already been created!!!')
-
     tasks = []
     for link in value:
         tasks.append(fetch_url(link))
 
     for chunk in iter_chunks(tasks, size=chunk_size):
         res = await asyncio.gather(*chunk)
-
-        break
         await insert_car_data(session, res)
+        counter['cnt_save'].extend(chunk)
+
+        logging.info(f'Data received: {len(counter["cnt_save"])}')
 
     await session.close()
 
 
 async def fetch_url(url):
-    print(url)
+
     resp = await async_request(url)
 
     if resp.status != 200:
         logging.warning(f'Bad request, status code: {resp.status}')
         return
 
-    raw_data = parsers.get_data(url, fetch_soup(resp.content))
-    print(raw_data)
+    result = parsers.get_data(url, fetch_soup(resp.content))
+    params_for_phones = parsers.get_params_for_phones(fetch_soup(resp.content))
+
+    user_id = url.split('_')[-1].replace('.html', '')
+
     resp_phones = await async_request(
-        url=f'https://auto.ria.com/users/phones/{raw_data["id_user"]}',
+        url=f'https://auto.ria.com/users/phones/{user_id}',
         params={
-            'hash': raw_data['hash'],
-            'expires': raw_data['expires']
+            'hash': params_for_phones['hash'],
+            'expires': params_for_phones['expires']
         }
     )
 
@@ -116,12 +132,7 @@ async def fetch_url(url):
             f'Bad request for phones link, status code: {resp.status}')
         return
 
-    raw_data['phone_number'] = parsers.get_phones(resp_phones)
+    result['phone_number'] = format.format_phones(
+        json.loads(resp_phones.content))
 
-    data = format.format_data(raw_data)
-
-    return data
-
-if __name__ == '__main__':
-    links = asyncio.run(fetch_pages(1))
-    asyncio.run(main(links, chunk_size=1))
+    return result

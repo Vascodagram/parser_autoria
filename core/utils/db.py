@@ -2,9 +2,11 @@ import logging
 import os
 
 import aiopg
+import psycopg2
 
 
 async def insert_car_data(session, data):
+
     try:
         async with session.cursor() as cur:
             for item in data:
@@ -16,12 +18,12 @@ async def insert_car_data(session, data):
                     %(images_count)s, %(car_number)s, %(car_vin)s)
                     """, item)
 
-    except aiopg.exceptions.IntegrityError as e:
+    except psycopg2.IntegrityError as e:
         logging.warning(
             f'Uniqueness validation error or other basic errors: {e}'
         )
 
-    except aiopg.exceptions.DataError as e:
+    except psycopg2.DataError as e:
         logging.warning(f'Data error {e}')
 
 
@@ -41,11 +43,11 @@ async def create_car_table(session):
             CREATE TABLE IF NOT EXISTS car (
                 id SERIAL PRIMARY KEY,
                 url VARCHAR,
-                title VARCHAR,
+                title TEXT,
                 price_usd INT,
                 odometer INT,
                 username VARCHAR,
-                phone_number BIGINT,
+                phone_number VARCHAR,
                 image_url VARCHAR,
                 images_count INT,
                 car_number VARCHAR,
@@ -65,4 +67,5 @@ async def table_exists(session):
             )
         """)
         result = await cur.fetchone()
+
         return result[0]
