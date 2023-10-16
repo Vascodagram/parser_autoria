@@ -3,24 +3,25 @@ import json
 import logging
 import math
 
+from collections import defaultdict
+
 from utils.db import (async_db_session, table_exists, create_car_table,
                       insert_car_data)
 from utils.other import iter_chunks, fetch_soup
 from utils.http_cli import async_request
 from parser import format, parsers
 
-from collections import defaultdict
-
 logging.basicConfig(level=logging.INFO)
 
 counter = defaultdict(list)
+
 
 URL = 'https://auto.ria.com/uk/search/'
 
 PARAMS = {
     'indexName': 'auto,order_auto',
     'categories.main.id': 1,
-    'price.USD.lte': 1000,
+    'price.USD.lte': 200,
     'country.import.usa.not': -1,
     'abroad.not': 0,
     'price.currency': 1,
@@ -99,15 +100,11 @@ async def main(value, chunk_size):
     for chunk in iter_chunks(tasks, size=chunk_size):
         res = await asyncio.gather(*chunk)
         await insert_car_data(session, res)
-        counter['cnt_save'].extend(chunk)
-
-        logging.info(f'Data received: {len(counter["cnt_save"])}')
 
     await session.close()
 
 
 async def fetch_url(url):
-
     resp = await async_request(url)
 
     if resp.status != 200:

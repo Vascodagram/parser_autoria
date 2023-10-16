@@ -28,6 +28,7 @@ async def insert_car_data(session, data):
 
 
 async def async_db_session():
+    print(os.getenv('POSTGRES_HOST'))
     return await aiopg.connect(
         database=os.getenv('POSTGRES_DB', 'autoria'),
         user=os.getenv('POSTGRES_USER', 'AutoRia'),
