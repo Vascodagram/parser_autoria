@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 
@@ -15,10 +16,10 @@ def parsing_website(links, chunk_size):
 
 
 asyncio.run(init_db())
-links_pages = asyncio.run(fetch_pages(chunk_size=100))
+links_pages = asyncio.run(fetch_pages(chunk_size=25))
 
 logging.info(f'Received {len(links_pages)} links')
 
 
 for lst_links in iter_chunks(links_pages, 100):
-    result = parsing_website.delay(lst_links, 100)
+    result = parsing_website.delay(lst_links, 25)
