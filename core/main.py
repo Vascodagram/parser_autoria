@@ -12,6 +12,7 @@ from utils.http_cli import async_request
 from parser import format, parsers
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 counter = defaultdict(list)
 
@@ -21,7 +22,7 @@ URL = 'https://auto.ria.com/uk/search/'
 PARAMS = {
     'indexName': 'auto,order_auto',
     'categories.main.id': 1,
-    'price.USD.lte': 3000,
+    'price.USD.lte': 1000,
     'country.import.usa.not': -1,
     'abroad.not': 0,
     'price.currency': 1,
@@ -59,11 +60,11 @@ async def fetch_pages(chunk_size):
 
     cnt_pages = parsers.get_cnt_pages(fetch_soup(resp.content))
 
-    logging.info(f'Car count {cnt_pages}')
+    logger.info(f'Car count {cnt_pages}')
 
     cnt_pages = math.ceil(cnt_pages / PARAMS['size'])
 
-    logging.info(f'Pages count {cnt_pages}')
+    logger.info(f'Pages count {cnt_pages}')
 
     tasks = []
 
@@ -90,7 +91,7 @@ async def fetch_pages(chunk_size):
     return result
 
 
-async def main(value, chunk_size):
+async def main(value, chunk_size, task_name):
     session = await async_db_session()
 
     tasks = []
@@ -102,6 +103,8 @@ async def main(value, chunk_size):
         await insert_car_data(session, res)
 
     await session.close()
+
+    logger.info(task_name)
 
 
 async def fetch_url(url):

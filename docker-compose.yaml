@@ -33,7 +33,7 @@ services:
   celery:
     image: "parser"
     restart: "always"
-    command: "celery -A tasks.tasks worker -l info -c 1"
+    command: "celery -A tasks.tasks worker -l info -c 4"
     environment:
       - REDIS_DNS=redis://redis:6379/0
       - POSTGRES_USER=AutoRia

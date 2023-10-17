@@ -6,7 +6,7 @@ REDIS_DNS = os.getenv('REDIS_DNS', 'redis://localhost:6378/0')
 
 app = Celery(
     'tasks_autoria',
-    broker=REDIS_DNS
+    broker=REDIS_DNS,
 )
 
 app.conf.update(
