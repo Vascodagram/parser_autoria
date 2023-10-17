@@ -22,7 +22,7 @@ URL = 'https://auto.ria.com/uk/search/'
 PARAMS = {
     'indexName': 'auto,order_auto',
     'categories.main.id': 1,
-    'price.USD.lte': 1000,
+    'price.USD.lte': 700,
     'country.import.usa.not': -1,
     'abroad.not': 0,
     'price.currency': 1,
